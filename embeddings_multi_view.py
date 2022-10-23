@@ -510,7 +510,7 @@ class Embeddings(object):
 
         print('Model is multi-view spherical-k-means')
 
-        for i in range(30):
+        for i in range(4):
             print('test time:', i)
             if self.p.dataset == 'OPIEC59k':
                 n_cluster = 490
