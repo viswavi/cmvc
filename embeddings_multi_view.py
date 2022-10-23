@@ -189,7 +189,7 @@ class Embeddings(object):
     """
 
     def __init__(self, params, side_info, true_ent2clust, true_clust2ent, sub_uni2triple_dict=None,
-                 triple_list=None):
+                 triple_list=None, num_reinit=10):
         self.p = params
 
         self.side_info = side_info
@@ -200,6 +200,7 @@ class Embeddings(object):
         self.triples_list = triple_list
 
         self.rel_id2sentence_list = dict()
+        self.num_reinit = num_reinit
 
         ent_id2sentence_list = self.side_info.ent_id2sentence_list
         for rel in self.side_info.rel_list:
@@ -510,7 +511,7 @@ class Embeddings(object):
 
         print('Model is multi-view spherical-k-means')
 
-        for i in range(4):
+        for i in range(3):
             print('test time:', i)
             if self.p.dataset == 'OPIEC59k':
                 n_cluster = 490
@@ -524,7 +525,7 @@ class Embeddings(object):
             t0 = time.time()
             real_time = time.strftime("%Y_%m_%d") + ' ' + time.strftime("%H:%M:%S")
             print('time:', real_time)
-            mv_skm = Multi_view_SphericalKMeans(n_clusters=n_cluster, init='k-means++', n_init=10, max_iter=10,
+            mv_skm = Multi_view_SphericalKMeans(n_clusters=n_cluster, init='k-means++', n_init=self.num_reinit, max_iter=10,
                                                 n_jobs=5, verbose=0, p=self.p, side_info=self.side_info,
                                                 true_ent2clust=self.true_ent2clust,
                                                 true_clust2ent=self.true_clust2ent)

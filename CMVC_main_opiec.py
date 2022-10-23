@@ -101,7 +101,7 @@ class CMVC_Main(object):
 
         if not checkFile(fname1) or not checkFile(fname2):
             embed = Embeddings(self.p, self.side_info, true_ent2clust=self.true_ent2clust,
-                               true_clust2ent=self.true_clust2ent, triple_list=self.triples_list)
+                               true_clust2ent=self.true_clust2ent, triple_list=self.triples_list, num_reinit=self.p.num_reinit)
             embed.fit()
 
             self.ent2embed = embed.ent2embed  # Get the learned NP embeddings
@@ -210,6 +210,7 @@ if __name__ == '__main__':
     parser.add_argument('--nentity', type=int, default=0, help='DO NOT MANUALLY SET')
     parser.add_argument('--nrelation', type=int, default=0, help='DO NOT MANUALLY SET')
     parser.add_argument('-embed_dims', dest='embed_dims', default=300, type=int, help='Embedding dimension')
+    parser.add_argument('--num_reinit', type=int, default=10, help="Number of reinitializations to try for k-Means clustering")
 
     # word2vec and iteration hyper-parameters
     parser.add_argument('-retrain_literal_embeds', dest='retrain_literal_embeds', default=True,
