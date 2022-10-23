@@ -383,13 +383,13 @@ class Embeddings(object):
             for id in self.side_info.id2ent.keys(): self.ent2embed[id] = self.E_init[id]
             for id in self.side_info.id2rel.keys(): self.rel2embed[id] = self.R_init[id]
 
-		if self.p.input == 'entity':
-			context_view_label = all_cluster_list
-			print('context_view_seed : web_entity + EL')
-			cluster_test(self.p, self.side_info, context_view_label, self.true_ent2clust, self.true_clust2ent, print_or_not=True)
-		else:
-			context_view_label = context_relation_cluster_list
-			print('context_view_seed : web_relation + AMIE')
+        if self.p.input == 'entity':
+            context_view_label = all_cluster_list
+            print('context_view_seed : web_entity + EL')
+            cluster_test(self.p, self.side_info, context_view_label, self.true_ent2clust, self.true_clust2ent, print_or_not=True)
+        else:
+            context_view_label = context_relation_cluster_list
+            print('context_view_seed : web_relation + AMIE')
 
         folder = 'multi_view/context_view_' + str(self.p.input)
         print('self.p.input:', self.p.input)
@@ -430,6 +430,7 @@ class Embeddings(object):
             else:
                 print('load BERT_fine-tune_', fname1)
                 self.label = pickle.load(open(fname1, 'rb'))
+                context_view_label = self.label
         old_label, new_label = context_view_label, self.label
         print('old_label : ')
         cluster_test(self.p, self.side_info, old_label, self.true_ent2clust, self.true_clust2ent, print_or_not=True)
@@ -457,7 +458,7 @@ class Embeddings(object):
         print('self.context_view_embed:', len(self.context_view_embed))
 
         print('fact view: ')
-		# threshold_or_cluster = 'threshold'
+        # threshold_or_cluster = 'threshold'
         threshold_or_cluster = 'cluster'
         if threshold_or_cluster == 'threshold':
             if self.p.dataset == 'OPIEC59k':
