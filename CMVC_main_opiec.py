@@ -210,6 +210,7 @@ if __name__ == '__main__':
     parser.add_argument('--nentity', type=int, default=0, help='DO NOT MANUALLY SET')
     parser.add_argument('--nrelation', type=int, default=0, help='DO NOT MANUALLY SET')
     parser.add_argument('-embed_dims', dest='embed_dims', default=300, type=int, help='Embedding dimension')
+    parser.add_argument('--kmeans_initialization', default="k-means++", type=str, choices=["k-means++", "seeding", "pc"], help='Embedding dimension')
     parser.add_argument('--num_reinit', type=int, default=10, help="Number of reinitializations to try for k-Means clustering")
 
     # word2vec and iteration hyper-parameters
