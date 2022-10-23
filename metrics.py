@@ -6,6 +6,7 @@ E: Gold standard cluster
 '''
 
 import itertools, sys
+import random
 
 def macroPrecision(C_clust2ele, E_ele2clust):
 	num_prec = 0
@@ -74,20 +75,43 @@ def pairPrecision(C_clust2ele, E_ele2clust):
 	if num_pairs == 0: return 0
 	return float(num_hit) / float(num_pairs)
 
-def pairwiseMetric(C_clust2ele, E_ele2clust, E_clust2ent):
+def streaming_combination_pairs(cluster, max_pairs_from_cluster):
+	idx_set = list(range(len(cluster)))
+	first_idxs = random.choices(idx_set, k=2*max_pairs_from_cluster)
+	second_idxs = random.choices(idx_set, k=2*max_pairs_from_cluster)
+	unique_pairs = list(set(zip(first_idxs, second_idxs)))
+	if len(unique_pairs) >= max_pairs_from_cluster:
+		sampled_idxs = random.sample(unique_pairs, k=max_pairs_from_cluster)
+		clusterlist = list(cluster)
+		unique_pairs = [(clusterlist[i], clusterlist[j]) for (i,j) in sampled_idxs]
+	return unique_pairs
+
+def capped_combinations(cluster, max_pairs_from_cluster):
+	combination_size = len(cluster) * (len(cluster) - 1) / 2
+	if combination_size <= max_pairs_from_cluster:
+		all_pairs = itertools.combinations(cluster, 2)
+	else:
+		all_pairs = streaming_combination_pairs(cluster, max_pairs_from_cluster)
+	return all_pairs
+
+def pairwiseMetric(C_clust2ele, E_ele2clust, E_clust2ent, max_pairs_from_cluster=100000):
 	num_hit = 0
 	num_C_pairs = 0
 	num_E_pairs = 0
 
-	for _, cluster in C_clust2ele.items():
-		all_pairs = list(itertools.combinations(cluster, 2))
-		num_C_pairs += len(all_pairs)
-
+	for _, cluster in C_clust2ele.items():		
+		all_pairs = capped_combinations(cluster, max_pairs_from_cluster)
 		for e1, e2 in all_pairs:
-			if e1 in E_ele2clust and e2 in E_ele2clust and len(E_ele2clust[e1].intersection(E_ele2clust[e2])) > 0: num_hit += 1
+			if e1 in E_ele2clust and e2 in E_ele2clust and len(E_ele2clust[e1].intersection(E_ele2clust[e2])) > 0:
+				num_hit += 1
+			num_C_pairs += 1
 
 	for rep, cluster in E_clust2ent.items(): 
-		num_E_pairs += len(list(itertools.combinations(cluster, 2)))
+		num_pairs = 0
+		pairs = capped_combinations(cluster, max_pairs_from_cluster)
+		for pair in pairs:
+			num_pairs += 1
+		num_E_pairs += num_pairs
 
 	if num_C_pairs == 0 or num_E_pairs == 0: 
 		return 1e-6, 1e-6
@@ -128,7 +152,6 @@ def evaluate(C_ele2clust, C_clust2ele, E_ele2clust, E_clust2ent):
 
 	pair_prec,pair_recall = pairwiseMetric(C_clust2ele, E_ele2clust, E_clust2ent)
 	pair_f1		= calcF1(pair_prec, pair_recall)
-
 	return {
 		'macro_prec': 	round(macro_prec, 	4),
 		'macro_recall':	round(macro_recall, 	4),
