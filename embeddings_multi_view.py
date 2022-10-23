@@ -537,7 +537,7 @@ class Embeddings(object):
             else:
                 init = "k-means++"
 
-            mv_skm = Multi_view_SphericalKMeans(n_clusters=n_cluster, init=init, n_init=self.num_reinit, max_iter=10,
+            mv_skm = Multi_view_SphericalKMeans(n_clusters=n_cluster, init='k-means++', n_init=self.num_reinit, max_iter=10,
                                                 n_jobs=5, verbose=0, p=self.p, side_info=self.side_info,
                                                 true_ent2clust=self.true_ent2clust,
                                                 true_clust2ent=self.true_clust2ent)
