@@ -550,6 +550,16 @@ class Embeddings(object):
             print('Model: #Clusters: %d, #Singletons %d' % (model_clusters, model_Singletons))
             print('Gold: #Clusters: %d, #Singletons %d' % (gold_clusters, gold_Singletons))
 
+
+            try:
+                metrics = (ave_prec, ave_recall, ave_f1, macro_prec, micro_prec, pair_prec, macro_recall, micro_recall, \
+                pair_recall, macro_f1, micro_f1, pair_f1, model_clusters, model_Singletons, gold_clusters, gold_Singletons)
+                model_output = (self.p, self.side_info, cluster_predict_list, self.true_ent2clust, self.true_clust2ent, metrics)
+                model_output_fname = "../output/" + self.p.dataset + '_' + self.p.split + '_' + '1/' + "model_output_iter_" + str(i) + ".pkl"
+                pickle.dump(model_output, open(model_output_fname, 'wb'))
+            except:
+                breakpoint()
+
             if show_memory:
                 size, peak = tracemalloc.get_traced_memory()
                 print('memory blocks:{:>10.4f} GB'.format(peak / 1024 / 1024 / 1024))
