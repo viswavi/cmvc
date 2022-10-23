@@ -525,7 +525,19 @@ class Embeddings(object):
             t0 = time.time()
             real_time = time.strftime("%Y_%m_%d") + ' ' + time.strftime("%H:%M:%S")
             print('time:', real_time)
-            mv_skm = Multi_view_SphericalKMeans(n_clusters=n_cluster, init='k-means++', n_init=self.num_reinit, max_iter=10,
+
+            if self.p.kmeans_initialization == "seeding":
+                init = np.ndarray()
+                print("TODO(Vijay): Not implemented")
+                breakpoint()
+            elif self.p.kmeans_initialization == "pc":
+                init = np.ndarray()
+                print("TODO(Vijay): Not implemented")
+                breakpoint()
+            else:
+                init = "k-means++"
+
+            mv_skm = Multi_view_SphericalKMeans(n_clusters=n_cluster, init=init, n_init=self.num_reinit, max_iter=10,
                                                 n_jobs=5, verbose=0, p=self.p, side_info=self.side_info,
                                                 true_ent2clust=self.true_ent2clust,
                                                 true_clust2ent=self.true_clust2ent)
