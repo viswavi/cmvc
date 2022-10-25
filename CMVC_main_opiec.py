@@ -198,7 +198,7 @@ if __name__ == '__main__':
                         help='Otherwise use subsampling weighting like in word2vec', default=True)
 
     parser.add_argument('-lr', '--learning_rate', default=0.0001, type=float)
-    parser.add_argument('-cpu', '--cpu_num', default=12, type=int)
+    parser.add_argument('-cpu', '--cpu_num', default=4, type=int)
     parser.add_argument('-init', '--init_checkpoint', default=None, type=str)
     parser.add_argument('--warm_up_steps', default=None, type=int)
 
@@ -210,8 +210,11 @@ if __name__ == '__main__':
     parser.add_argument('--nentity', type=int, default=0, help='DO NOT MANUALLY SET')
     parser.add_argument('--nrelation', type=int, default=0, help='DO NOT MANUALLY SET')
     parser.add_argument('-embed_dims', dest='embed_dims', default=300, type=int, help='Embedding dimension')
-    parser.add_argument('--kmeans_initialization', default="k-means++", type=str, choices=["k-means++", "seeding", "pc"], help='Embedding dimension')
+    parser.add_argument('--kmeans_initialization', default="k-means++", type=str, choices=["k-means++", "seeded-k-means++", "pc"], help='Embedding dimension')
+    parser.add_argument('--num_cluster_seeds', default=None, type=int, help='Number of cluster seeds to use, if simulating user seed feedback')
     parser.add_argument('--num_reinit', type=int, default=10, help="Number of reinitializations to try for k-Means clustering")
+    parser.add_argument('--save_model', action="store_true", help="Whether or not to serialize and save model outputs and parameters to disk")
+    parser.add_argument('--unnormalize', action="store_true", help="Whether to normalize each point before clustering")
 
     # word2vec and iteration hyper-parameters
     parser.add_argument('-retrain_literal_embeds', dest='retrain_literal_embeds', default=True,

@@ -9,15 +9,17 @@ from sklearn.cluster import _k_means_fast as _k_means
 from sklearn.cluster._kmeans import (
 # from sklearn.cluster.k_means_ import (
     _check_sample_weight,
-    _init_centroids,
+    _k_init,
     _labels_inertia,
     _tolerance,
     _validate_center_shape,
 )
 
+import scipy.sparse as sp
+from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.preprocessing import normalize
 from sklearn.utils import check_array, check_random_state
-from sklearn.utils.extmath import row_norms, squared_norm
+from sklearn.utils.extmath import row_norms, squared_norm, stable_cumsum
 from sklearn.utils.validation import _num_samples, check_X_y
 from sklearn.preprocessing._label import LabelEncoder
 from sklearn.metrics.cluster._unsupervised import check_number_of_labels
@@ -241,17 +243,215 @@ def multi_view_labels_inertia(X_view_1, X_view_2, sample_weight, x_view_1_square
     inertia = inertia_view_1 + inertia_view_2
     return labels, inertia
 
+def init_seeded_kmeans_plusplus(X, seed_set, n_clusters, x_squared_norms, random_state, n_local_trials=None):
+    """Init n_clusters seeds according to k-means++. Modified from original at
+    https://github.com/scikit-learn/scikit-learn/blob/36958fb24/sklearn/cluster/_kmeans.py#L154.
+
+    Parameters
+    ----------
+    X : array or sparse matrix, shape (n_samples, n_features)
+        The data to pick seeds for. To avoid memory copy, the input data
+        should be double precision (dtype=np.float64).
+
+    init_clusters_seeds : array, shape N
+        Pre-initialized cluster seeds (indices to the dataset) chosen by
+        a previous method (such as an oracle). The number of initial cluster
+        seeds N must be less than n_clusters.
+
+    n_clusters : integer
+        The number of seeds to choose
+
+    x_squared_norms : array, shape (n_samples,)
+        Squared Euclidean norm of each data point.
+
+    random_state : int, RandomState instance
+        The generator used to initialize the centers. Use an int to make the
+        randomness deterministic.
+        See :term:`Glossary <random_state>`.
+
+    n_local_trials : integer, optional
+        The number of seeding trials for each center (except the first),
+        of which the one reducing inertia the most is greedily chosen.
+        Set to None to make the number of trials depend logarithmically
+        on the number of seeds (2+log(k)); this is the default.
+
+    Notes
+    -----
+    Selects initial cluster centers for k-mean clustering in a smart way
+    to speed up convergence. see: Arthur, D. and Vassilvitskii, S.
+    "k-means++: the advantages of careful seeding". ACM-SIAM symposium
+    on Discrete algorithms. 2007
+
+    Version ported from http://www.stanford.edu/~darthur/kMeansppTest.zip,
+    which is the implementation used in the aforementioned paper.
+    """
+    n_samples, n_features = X.shape
+
+
+    print(f"n_clusters: {n_clusters}")
+    centers = np.empty((n_clusters, n_features), dtype=X.dtype)
+    print(f"(BEFORE) centers.shape: {centers.shape}")
+
+    assert x_squared_norms is not None, 'x_squared_norms None in _k_init'
+
+    # Set the number of local seeding trials if none is given
+    if n_local_trials is None:
+        # This is what Arthur/Vassilvitskii tried, but did not report
+        # specific results for other than mentioning in the conclusion
+        # that it helped.
+        n_local_trials = 2 + int(np.log(n_clusters))
+
+    init_clusters_seeds, initial_cluster_vectors = seed_set
+
+    # Pick first center randomly
+    centers[0] = X[init_clusters_seeds[0]]
+
+    # Pick first N centers from seeds
+
+    # Initialize list of closest distances and calculate current potential
+    closest_dist_sq = euclidean_distances(
+        centers[0, np.newaxis], X, Y_norm_squared=x_squared_norms,
+        squared=True)
+    current_pot = closest_dist_sq.sum()
+
+    # Pick the remaining n_clusters-1 points
+    for c in range(1, n_clusters):
+
+        if c < len(init_clusters_seeds):
+            true_cluster_seed = init_clusters_seeds[c]
+            candidate_ids = np.array([true_cluster_seed])
+        else:
+            # Choose center candidates by sampling with probability proportional
+            # to the squared distance to the closest existing center
+            rand_vals = random_state.random_sample(n_local_trials) * current_pot
+            candidate_ids = np.searchsorted(stable_cumsum(closest_dist_sq),
+                                            rand_vals)
+
+            # XXX: numerical imprecision can result in a candidate_id out of range
+            np.clip(candidate_ids, None, closest_dist_sq.size - 1,
+                    out=candidate_ids)
+
+        # Compute distances to center candidates
+        distance_to_candidates = euclidean_distances(
+                X[candidate_ids], X, Y_norm_squared=x_squared_norms, squared=True)
+
+        # update closest distances squared and potential for each candidate
+        np.minimum(closest_dist_sq, distance_to_candidates,
+                   out=distance_to_candidates)
+        candidates_pot = distance_to_candidates.sum(axis=1)
+
+        # Decide which candidate is the best
+        best_candidate = np.argmin(candidates_pot)
+        current_pot = candidates_pot[best_candidate]
+        closest_dist_sq = distance_to_candidates[best_candidate]
+        best_candidate = candidate_ids[best_candidate]
+
+        # Permanently add best center candidate found in local tries
+        if sp.issparse(X):
+            centers[c] = X[best_candidate].toarray()
+        else:
+            centers[c] = X[best_candidate]
+    return centers
+
+def _init_centroids_with_seeding(X, k, init, seed_set=None, random_state=None, x_squared_norms=None,
+                    init_size=None):
+    """Compute the initial centroids
+
+    Parameters
+    ----------
+
+    X : array, shape (n_samples, n_features)
+
+    k : int
+        number of centroids
+
+    init : {'k-means++', 'random' or ndarray or callable} optional
+        Method for initialization
+
+    random_state : int, RandomState instance or None (default)
+        Determines random number generation for centroid initialization. Use
+        an int to make the randomness deterministic.
+        See :term:`Glossary <random_state>`.
+
+    x_squared_norms : array, shape (n_samples,), optional
+        Squared euclidean norm of each data point. Pass it if you have it at
+        hands already to avoid it being recomputed here. Default: None
+
+    init_size : int, optional
+        Number of samples to randomly sample for speeding up the
+        initialization (sometimes at the expense of accuracy): the
+        only algorithm is initialized by running a batch KMeans on a
+        random subset of the data. This needs to be larger than k.
+
+    Returns
+    -------
+    centers : array, shape(k, n_features)
+    """
+    random_state = check_random_state(random_state)
+    n_samples = X.shape[0]
+
+    if x_squared_norms is None:
+        x_squared_norms = row_norms(X, squared=True)
+
+    if init_size is not None and init_size < n_samples:
+        if init_size < k:
+            warnings.warn(
+                "init_size=%d should be larger than k=%d. "
+                "Setting it to 3*k" % (init_size, k),
+                RuntimeWarning, stacklevel=2)
+            init_size = 3 * k
+        init_indices = random_state.randint(0, n_samples, init_size)
+        X = X[init_indices]
+        x_squared_norms = x_squared_norms[init_indices]
+        n_samples = X.shape[0]
+    elif n_samples < k:
+        raise ValueError(
+            "n_samples=%d should be larger than k=%d" % (n_samples, k))
+
+    print("(1)")
+    if isinstance(init, str) and init == 'k-means++':
+        centers = _k_init(X, k, random_state=random_state,
+                          x_squared_norms=x_squared_norms)
+    elif isinstance(init, str) and init == 'seeded-k-means++':
+        print("(0)")
+        centers = init_seeded_kmeans_plusplus(X, seed_set, k, random_state=random_state,
+                          x_squared_norms=x_squared_norms)
+    elif isinstance(init, str) and init == 'random':
+        seeds = random_state.permutation(n_samples)[:k]
+        centers = X[seeds]
+    elif hasattr(init, '__array__'):
+        # ensure that the centers have the same dtype as X
+        # this is a requirement of fused types of cython
+        centers = np.array(init, dtype=X.dtype)
+    elif callable(init):
+        centers = init(X, k, random_state=random_state)
+        centers = np.asarray(centers, dtype=X.dtype)
+    else:
+        raise ValueError("the init parameter for the k-means should "
+                         "be 'k-means++' or 'random' or an ndarray, "
+                         "'%s' (type '%s') was passed." % (init, type(init)))
+
+    if sp.issparse(centers):
+        centers = centers.toarray()
+
+    print(f"(AFTER) centers.shape: {centers.shape}")
+
+    _validate_center_shape(X, k, centers)
+    return centers
 
 def multi_view_spherical_kmeans_single_lloyd(
     X_view_1,
     X_view_2,
+    X_view_2_unnorm,
     n_clusters,
     sample_weight=None,
     max_iter=300,
     init="k-means++",
+    seed_set=None,
     verbose=False,
     x_view_1_squared_norms=None,
     x_view_2_squared_norms=None,
+    X_view_2_unnorm_squared_norms=None,
     random_state=None,
     tol=1e-4,
     precompute_distances=True,
@@ -269,8 +469,9 @@ def multi_view_spherical_kmeans_single_lloyd(
     best_labels, best_inertia, best_centers = None, None, None
 
     # init
-    centers_view_2 = _init_centroids(
-        X_view_2, n_clusters, init, random_state=random_state, x_squared_norms=x_view_2_squared_norms
+    print("(2)")
+    centers_view_2 = _init_centroids_with_seeding(
+        X_view_2_unnorm, n_clusters, init, seed_set=seed_set, random_state=random_state, x_squared_norms=X_view_2_unnorm_squared_norms
     )
 
     if verbose:
@@ -468,9 +669,11 @@ def multi_view_spherical_kmeans_single_lloyd(
 def multi_view_spherical_k_means(
     X_view_1,
     X_view_2,
+    X_view_2_unnorm,
     n_clusters,
     sample_weight=None,
     init="k-means++",
+    seed_set=None,
     n_init=10,
     max_iter=300,
     verbose=False,
@@ -523,8 +726,6 @@ def multi_view_spherical_k_means(
     tol = (tol_view_1 + tol_view_2) / 2
 
     if hasattr(init, "__array__"):
-        init = check_array(init, dtype=X_view_1.dtype.type, order="C", copy=True)
-        _validate_center_shape(X_view_1, n_clusters, init)
         init = check_array(init, dtype=X_view_2.dtype.type, order="C", copy=True)
         _validate_center_shape(X_view_2, n_clusters, init)
 
@@ -540,6 +741,8 @@ def multi_view_spherical_k_means(
     # precompute squared norms of data points
     x_view_1_squared_norms = row_norms(X_view_1, squared=True)
     x_view_2_squared_norms = row_norms(X_view_2, squared=True)
+    X_view_2_unnorm_squared_norms = row_norms(X_view_2_unnorm, squared=True)
+    print("(3)")
 
     if n_jobs == 1:
         # For a single thread, less memory is needed if we just store one set
@@ -549,14 +752,17 @@ def multi_view_spherical_k_means(
             labels, inertia, n_iter_ = multi_view_spherical_kmeans_single_lloyd(
                 X_view_1,
                 X_view_2,
+                X_view_2_unnorm,
                 n_clusters,
                 sample_weight,
                 max_iter=max_iter,
                 init=init,
+                seed_set=seed_set,
                 verbose=verbose,
                 tol=tol,
                 x_view_1_squared_norms=x_view_1_squared_norms,
                 x_view_2_squared_norms=x_view_2_squared_norms,
+                X_view_2_unnorm_squared_norms=X_view_2_unnorm_squared_norms,
                 random_state=random_state,
                 p=p,
                 side_info=side_info,
@@ -576,14 +782,17 @@ def multi_view_spherical_k_means(
             delayed(multi_view_spherical_kmeans_single_lloyd)(
                 X_view_1,
                 X_view_2,
+                X_view_2_unnorm,
                 n_clusters,
                 sample_weight,
                 max_iter=max_iter,
                 init=init,
+                seed_set=seed_set,
                 verbose=verbose,
                 tol=tol,
                 x_view_1_squared_norms=x_view_1_squared_norms,
                 x_view_2_squared_norms=x_view_2_squared_norms,
+                X_view_2_unnorm_squared_norms=X_view_2_unnorm_squared_norms,
                 # Change seed to ensure variety
                 random_state=seed,
                 p=p,
@@ -629,11 +838,12 @@ class Multi_view_SphericalKMeans(object):
         centroid seeds. The final results will be the best output of
         n_init consecutive runs in terms of inertia.
 
-    init : {'k-means++', 'random' or an ndarray}
+    init : {'k-means++', 'seeded-k-means++', 'random' or an ndarray}
         Method for initialization, defaults to 'k-means++':
         'k-means++' : selects initial cluster centers for k-mean
         clustering in a smart way to speed up convergence. See section
         Notes in k_init for more details.
+        'seeded-k-means++' : k-means++ with some fixed cluster seeds provided.
         'random': choose k observations (rows) at random from data for
         the initial centroids.
         If an ndarray is passed, it should be of shape (n_clusters, n_features)
@@ -685,6 +895,7 @@ class Multi_view_SphericalKMeans(object):
         self,
         n_clusters=8,
         init="k-means++",
+        seed_set=None,
         n_init=10,
         max_iter=300,
         tol=1e-4,
@@ -700,6 +911,7 @@ class Multi_view_SphericalKMeans(object):
     ):
         self.n_clusters = n_clusters
         self.init = init
+        self.seed_set = seed_set
         self.max_iter = max_iter
         self.tol = tol
         self.n_init = n_init
@@ -727,6 +939,7 @@ class Multi_view_SphericalKMeans(object):
             The weights for each observation in X. If None, all observations
             are assigned equal weight (default: None)
         """
+        X_view_2_unnorm = check_array(X_view_2)
         if self.normalize:
             X_view_1 = normalize(X_view_1)
             X_view_2 = normalize(X_view_2)
@@ -735,12 +948,16 @@ class Multi_view_SphericalKMeans(object):
 
         # TODO: add check that all data is unit-normalized
 
+        print("(4)")
+
         self.labels_, self.inertia_, self.n_iter_ = multi_view_spherical_k_means(
             X_view_1,
             X_view_2,
+            X_view_2_unnorm,
             n_clusters=self.n_clusters,
             sample_weight=sample_weight,
             init=self.init,
+            seed_set=self.seed_set,
             n_init=self.n_init,
             max_iter=self.max_iter,
             verbose=self.verbose,
