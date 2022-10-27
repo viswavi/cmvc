@@ -1,4 +1,4 @@
-import gensim, itertools, pickle, time
+import gensim, itertools, pickle, random, time
 from helper import *
 from utils import cos_sim
 from test_performance import cluster_test, HAC_getClusters
@@ -182,6 +182,35 @@ def totol_cluster2pair(cluster_list):
                 seed_pair_list += iter_list
     return seed_pair_list
 
+def initialize_cluster_seeds(X, num_cluster_seeds, ent2id, ent2embed, id_to_embedding_rows, true_clust2ent):
+    """Init k-means clusters seeds according to k-means++
+
+    Parameters
+    ----------
+    X : array or sparse matrix, shape (n_samples, n_features)
+        The data to pick seeds for. To avoid memory copy, the input data
+        should be double precision (dtype=np.float64).
+
+    num_cluster_seeds : array or sparse matrix, shape (n_samples, n_features)
+        Pre-initialized cluster seeds chosen by a previous method (such as an
+        oracle). The number of initial cluster seeds N must be less than
+        num_clusters.
+    ...
+
+    Return indices into the embedding matrix to use as cluster initializations
+    """
+    seed_points = []
+    seed_point_vectors = np.empty((num_cluster_seeds, len(X[0])), dtype=X[0].dtype)
+    assert num_cluster_seeds <= len(true_clust2ent)
+    cluster_names_to_sample = random.sample(true_clust2ent.keys(), num_cluster_seeds)
+    for i, cluster_name in enumerate(cluster_names_to_sample):
+        cluster_entities = true_clust2ent[cluster_name]
+        random_entity = random.choice(list(cluster_entities))
+        entity_name = random_entity.split("|")[0]
+        seed_points.append(id_to_embedding_rows[ent2id[entity_name]])
+        seed_point_vectors[i] = ent2embed[ent2id[entity_name]]
+    return seed_points, seed_point_vectors
+
 
 class Embeddings(object):
     """
@@ -189,7 +218,7 @@ class Embeddings(object):
     """
 
     def __init__(self, params, side_info, true_ent2clust, true_clust2ent, sub_uni2triple_dict=None,
-                 triple_list=None, num_reinit=10):
+                 triple_list=None, num_reinit=10, random_seed=None):
         self.p = params
 
         self.side_info = side_info
@@ -201,6 +230,7 @@ class Embeddings(object):
 
         self.rel_id2sentence_list = dict()
         self.num_reinit = num_reinit
+        self.random_seed = random_seed
 
         ent_id2sentence_list = self.side_info.ent_id2sentence_list
         for rel in self.side_info.rel_list:
@@ -415,8 +445,8 @@ class Embeddings(object):
                 K_init = len(list(set(self.sub_label)))
                 print('K_init:', K_init)
                 print('epochs:', self.epochs)
-                for i in range(self.epochs):
-                    BERT_self_training_time = i
+                for random_seed in range(self.epochs):
+                    BERT_self_training_time = random_seed
                     if str(self.p.input) == 'entity':
                         input_list = clean_ent_list
                     else:
@@ -450,10 +480,12 @@ class Embeddings(object):
         print('self.BERT_CLS:', len(self.BERT_CLS))
 
         self.relation_view_embed, self.context_view_embed = [], []
+        id_to_embedding_rows = {}
         for ent in clean_ent_list:
             id = self.side_info.ent2id[ent]
             if id in self.side_info.isSub:
                 self.relation_view_embed.append(self.ent2embed[id])
+                id_to_embedding_rows[id] = len(self.context_view_embed)
                 self.context_view_embed.append(self.BERT_CLS[id])
         print('self.relation_view_embed:', len(self.relation_view_embed))
         print('self.context_view_embed:', len(self.context_view_embed))
@@ -511,8 +543,8 @@ class Embeddings(object):
 
         print('Model is multi-view spherical-k-means')
 
-        for i in range(3):
-            print('test time:', i)
+        for random_seed in range(3):
+            print('test time:', random_seed)
             if self.p.dataset == 'OPIEC59k':
                 n_cluster = 490
             elif self.p.dataset == 'reverb45k' or self.p.dataset == 'reverb45k_change':
@@ -525,10 +557,27 @@ class Embeddings(object):
             t0 = time.time()
             real_time = time.strftime("%Y_%m_%d") + ' ' + time.strftime("%H:%M:%S")
             print('time:', real_time)
-            mv_skm = Multi_view_SphericalKMeans(n_clusters=n_cluster, init='k-means++', n_init=self.num_reinit, max_iter=10,
-                                                n_jobs=5, verbose=0, p=self.p, side_info=self.side_info,
+
+            if self.p.kmeans_initialization == "seeded-k-means++":
+                init = "seeded-k-means++"
+                assert self.p.num_cluster_seeds <= n_cluster
+                seed_set = initialize_cluster_seeds(self.context_view_embed, self.p.num_cluster_seeds, self.side_info.ent2id, self.BERT_CLS, id_to_embedding_rows, self.true_clust2ent)
+                print("TODO(Vijay): Not implemented")
+            elif self.p.kmeans_initialization == "pc":
+                breakpoint()
+                init = "seeded-k-means++"
+                seed_set = np.array([])
+                print("TODO(Vijay): Not implemented")
+            else:
+                init = "k-means++"
+                seed_set = None
+
+            print(f"(5): {init}")
+            mv_skm = Multi_view_SphericalKMeans(n_clusters=n_cluster, init=init, seed_set=seed_set, n_init=self.num_reinit, max_iter=10,
+                                                n_jobs=1, verbose=0, p=self.p, side_info=self.side_info,
                                                 true_ent2clust=self.true_ent2clust,
-                                                true_clust2ent=self.true_clust2ent)
+                                                true_clust2ent=self.true_clust2ent,
+                                                normalize=not self.p.unnormalize)
             mv_skm.fit(self.relation_view_embed, self.context_view_embed)
             cluster_predict_list = mv_skm.labels_
             time_cost = time.time() - t0
@@ -551,14 +600,15 @@ class Embeddings(object):
             print('Gold: #Clusters: %d, #Singletons %d' % (gold_clusters, gold_Singletons))
 
 
-            try:
-                metrics = (ave_prec, ave_recall, ave_f1, macro_prec, micro_prec, pair_prec, macro_recall, micro_recall, \
-                pair_recall, macro_f1, micro_f1, pair_f1, model_clusters, model_Singletons, gold_clusters, gold_Singletons)
-                model_output = (self.p, self.side_info, cluster_predict_list, self.true_ent2clust, self.true_clust2ent, metrics)
-                model_output_fname = "../output/" + self.p.dataset + '_' + self.p.split + '_' + '1/' + "model_output_iter_" + str(i) + ".pkl"
-                pickle.dump(model_output, open(model_output_fname, 'wb'))
-            except:
-                breakpoint()
+            if self.p.save_model:
+                try:
+                    metrics = (ave_prec, ave_recall, ave_f1, macro_prec, micro_prec, pair_prec, macro_recall, micro_recall, \
+                    pair_recall, macro_f1, micro_f1, pair_f1, model_clusters, model_Singletons, gold_clusters, gold_Singletons)
+                    model_output = (self.p, self.side_info, cluster_predict_list, self.true_ent2clust, self.true_clust2ent, metrics)
+                    model_output_fname = "../output/" + self.p.dataset + '_' + self.p.split + '_' + '1/' + "model_output_iter_" + str(random_seed) + ".pkl"
+                    pickle.dump(model_output, open(model_output_fname, 'wb'))
+                except:
+                    breakpoint()
 
             if show_memory:
                 size, peak = tracemalloc.get_traced_memory()
