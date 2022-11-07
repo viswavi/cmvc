@@ -458,7 +458,8 @@ def multi_view_spherical_kmeans_single_lloyd(
     p=None,
     side_info=None,
     true_ent2clust=None,
-    true_clust2ent=None
+    true_clust2ent=None,
+    normalize_vectors=True,
 ):
     """
     Modified from sklearn.cluster.k_means_.k_means_single_lloyd.
@@ -518,6 +519,7 @@ def multi_view_spherical_kmeans_single_lloyd(
 
     # iterations
     inertia_totol = 0
+    i = 0
     for i in range(max_iter):  # epoch
         inertia_totol = 0
         for j in range(len(x_list)):  # views
@@ -535,7 +537,8 @@ def multi_view_spherical_kmeans_single_lloyd(
             )
 
             # l2-normalize centers (this is the main contribution here)
-            centers = normalize(centers)
+            if normalize_vectors:
+                centers = normalize(centers)
 
             # E step: labels assignment
             # TODO: _labels_inertia should be done with cosine distance
@@ -596,8 +599,9 @@ def multi_view_spherical_kmeans_single_lloyd(
             )
 
             # l2-normalize centers (this is the main contribution here)
-            best_centers_view_1 = normalize(best_centers_view_1)
-            best_centers_view_2 = normalize(best_centers_view_2)
+            if normalize_vectors:
+                best_centers_view_1 = normalize(best_centers_view_1)
+                best_centers_view_2 = normalize(best_centers_view_2)
 
             # E step: labels assignment
             # TODO: _labels_inertia should be done with cosine distance
@@ -643,8 +647,9 @@ def multi_view_spherical_kmeans_single_lloyd(
         )
 
         # l2-normalize centers (this is the main contribution here)
-        best_centers_view_1 = normalize(best_centers_view_1)
-        best_centers_view_2 = normalize(best_centers_view_2)
+        if normalize_vectors:
+            best_centers_view_1 = normalize(best_centers_view_1)
+            best_centers_view_2 = normalize(best_centers_view_2)
 
         # E step: labels assignment
         # TODO: _labels_inertia should be done with cosine distance
@@ -663,6 +668,10 @@ def multi_view_spherical_kmeans_single_lloyd(
             labels_view_1=labels_view_1,
             labels_view_2=labels_view_2
         )
+
+    if i == 0:
+        best_inertia = 0
+        best_labels = labels
 
     return best_labels, best_inertia, i + 1
 
@@ -686,7 +695,8 @@ def multi_view_spherical_k_means(
     p=None,
     side_info=None,
     true_ent2clust=None,
-    true_clust2ent=None
+    true_clust2ent=None,
+    normalize_vectors=True
 ):
     """Modified from sklearn.cluster.k_means_.k_means.
     """
@@ -697,7 +707,7 @@ def multi_view_spherical_k_means(
         )
     random_state = check_random_state(random_state)
 
-    if max_iter <= 0:
+    if max_iter < 0:
         raise ValueError(
             "Number of iterations should be a positive number,"
             " got %d instead" % max_iter
@@ -767,7 +777,8 @@ def multi_view_spherical_k_means(
                 p=p,
                 side_info=side_info,
                 true_ent2clust=true_ent2clust,
-                true_clust2ent=true_clust2ent
+                true_clust2ent=true_clust2ent,
+                normalize_vectors=normalize_vectors
             )
 
             # determine if these results are the best so far
@@ -798,7 +809,8 @@ def multi_view_spherical_k_means(
                 p=p,
                 side_info=side_info,
                 true_ent2clust=true_ent2clust,
-                true_clust2ent=true_clust2ent
+                true_clust2ent=true_clust2ent,
+                normalize_vectors=normalize_vectors
             )
             for seed in seeds
         )
@@ -969,7 +981,8 @@ class Multi_view_SphericalKMeans(object):
             p=self.p,
             side_info=self.side_info,
             true_ent2clust=self.true_ent2clust,
-            true_clust2ent=self.true_clust2ent
+            true_clust2ent=self.true_clust2ent,
+            normalize_vectors=self.normalize
         )
 
         return self
