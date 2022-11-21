@@ -304,12 +304,12 @@ def init_seeded_kmeans_plusplus(X, seed_set, n_clusters, x_squared_norms, random
 
     if seed_set is None or len(seed_set) == 0:
         random_index = np.random.choice(list(range(len(X))))
-        init_clusters_seeds = [random_index]
+        seed_set = [random_index]
     else:
-        init_clusters_seeds, _ = seed_set
+        seed_set = seed_set
 
     # Pick first center randomly
-    centers[0] = X[init_clusters_seeds[0]]
+    centers[0] = X[seed_set[0]]
 
     # Pick first N centers from seeds
 
@@ -322,8 +322,8 @@ def init_seeded_kmeans_plusplus(X, seed_set, n_clusters, x_squared_norms, random
     # Pick the remaining n_clusters-1 points
     for c in range(1, n_clusters):
 
-        if c < len(init_clusters_seeds):
-            true_cluster_seed = init_clusters_seeds[c]
+        if c < len(seed_set):
+            true_cluster_seed = seed_set[c]
             candidate_ids = np.array([true_cluster_seed])
         else:
             # Choose center candidates by sampling with probability proportional

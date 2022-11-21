@@ -182,7 +182,7 @@ def totol_cluster2pair(cluster_list):
                 seed_pair_list += iter_list
     return seed_pair_list
 
-def initialize_cluster_seeds(X, num_cluster_seeds, ent2id, ent2embed, id_to_embedding_rows, true_clust2ent):
+def initialize_cluster_seeds(num_cluster_seeds, ent2id, id_to_embedding_rows, true_clust2ent):
     """Init k-means clusters seeds according to k-means++
 
     Parameters
@@ -200,16 +200,14 @@ def initialize_cluster_seeds(X, num_cluster_seeds, ent2id, ent2embed, id_to_embe
     Return indices into the embedding matrix to use as cluster initializations
     """
     seed_points = []
-    seed_point_vectors = np.empty((num_cluster_seeds, len(X[0])), dtype=X[0].dtype)
     assert num_cluster_seeds <= len(true_clust2ent)
     cluster_names_to_sample = random.sample(true_clust2ent.keys(), num_cluster_seeds)
-    for i, cluster_name in enumerate(cluster_names_to_sample):
+    for cluster_name in cluster_names_to_sample:
         cluster_entities = true_clust2ent[cluster_name]
         random_entity = random.choice(list(cluster_entities))
         entity_name = random_entity.split("|")[0]
         seed_points.append(id_to_embedding_rows[ent2id[entity_name]])
-        seed_point_vectors[i] = ent2embed[ent2id[entity_name]]
-    return seed_points, seed_point_vectors
+    return seed_points
 
 
 class Embeddings(object):
@@ -561,7 +559,7 @@ class Embeddings(object):
             if self.p.kmeans_initialization == "seeded-k-means++":
                 init = "seeded-k-means++"
                 assert self.p.num_cluster_seeds <= n_cluster
-                seed_set = initialize_cluster_seeds(self.context_view_embed, self.p.num_cluster_seeds, self.side_info.ent2id, self.BERT_CLS, id_to_embedding_rows, self.true_clust2ent)
+                seed_set = initialize_cluster_seeds(self.p.num_cluster_seeds, self.side_info.ent2id, id_to_embedding_rows, self.true_clust2ent)
                 print("TODO(Vijay): Not implemented")
             elif self.p.kmeans_initialization == "pc":
                 breakpoint()
