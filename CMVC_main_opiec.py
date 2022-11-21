@@ -20,10 +20,10 @@ class CMVC_Main(object):
         self.amb_mentions = {}  # Contains all ambiguous mentions
         self.isAcronym = {}  # Contains all mentions which can be acronyms
 
-        print('dataset:', args.dataset)
-        if args.dataset == 'OPIEC59k':
+        print('dataset:', self.p.dataset)
+        if self.p.dataset == 'OPIEC59k':
             print('load OPIEC_dataset ... ')
-            self.triples_list = pickle.load(open(args.data_path, 'rb'))
+            self.triples_list = pickle.load(open(self.p.data_path, 'rb'))
 
             ''' Ground truth clustering '''
             self.true_ent2clust = ddict(set)
@@ -34,7 +34,7 @@ class CMVC_Main(object):
 
         else:
             if not checkFile(fname):
-                with codecs.open(args.data_path, encoding='utf-8', errors='ignore') as f:
+                with codecs.open(self.p.data_path, encoding='utf-8', errors='ignore') as f:
                     for line in f:
                         trp = json.loads(line.strip())
 

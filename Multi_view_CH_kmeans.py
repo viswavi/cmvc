@@ -234,6 +234,7 @@ def multi_view_labels_inertia(X_view_1, X_view_2, sample_weight, x_view_1_square
     # distances will be changed in-place
     if precompute_distances:
         return multi_view_labels_inertia_precompute_dense(X_view_1, X_view_2, centers_view_1, centers_view_2, labels_view_1, labels_view_2)
+
     inertia_view_1 = _k_means._assign_labels_array(
         X_view_1, sample_weight, x_view_1_squared_norms, centers_view_1, labels,
         distances=distances)
@@ -301,7 +302,11 @@ def init_seeded_kmeans_plusplus(X, seed_set, n_clusters, x_squared_norms, random
         # that it helped.
         n_local_trials = 2 + int(np.log(n_clusters))
 
-    init_clusters_seeds, initial_cluster_vectors = seed_set
+    if seed_set is None or len(seed_set) == 0:
+        random_index = np.random.choice(list(range(len(X))))
+        init_clusters_seeds = [random_index]
+    else:
+        init_clusters_seeds, _ = seed_set
 
     # Pick first center randomly
     centers[0] = X[init_clusters_seeds[0]]
@@ -408,12 +413,10 @@ def _init_centroids_with_seeding(X, k, init, seed_set=None, random_state=None, x
         raise ValueError(
             "n_samples=%d should be larger than k=%d" % (n_samples, k))
 
-    print("(1)")
     if isinstance(init, str) and init == 'k-means++':
         centers = _k_init(X, k, random_state=random_state,
                           x_squared_norms=x_squared_norms)
     elif isinstance(init, str) and init == 'seeded-k-means++':
-        print("(0)")
         centers = init_seeded_kmeans_plusplus(X, seed_set, k, random_state=random_state,
                           x_squared_norms=x_squared_norms)
     elif isinstance(init, str) and init == 'random':
