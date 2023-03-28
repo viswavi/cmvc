@@ -1,6 +1,7 @@
 from helper import *
-from utils import *
+from cmvc_utils import *
 from metrics import evaluate  # Evaluation metrics
+from metrics import macroPrecision, calcF1, pairwiseMetric
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial.distance import pdist
 from tqdm import tqdm
@@ -62,18 +63,22 @@ def cluster_test(params, side_info, cluster_predict_list, true_ent2clust, true_c
     triples = side_info.triples
     ent2id = side_info.ent2id
 
+    # Sub_cluster_predict_list is the same as cluster_predict_list.
     for eid in isSub.keys():
         sub_cluster_predict_list.append(cluster_predict_list[eid])
 
+    # Map each cluster to a list of indices of points in that cluster.
     for sub_id, cluster_id in enumerate(sub_cluster_predict_list):
         if cluster_id in clust2ent.keys():
             clust2ent[cluster_id].append(sub_id)
         else:
             clust2ent[cluster_id] = [sub_id]
+
+    # Map each cluster to a set of indices of points in that cluster.
     cesi_clust2ent = {}
-    for rep, cluster in clust2ent.items():
+    for rep, cluster_points in clust2ent.items():
         # cesi_clust2ent[rep] = list(cluster)
-        cesi_clust2ent[rep] = set(cluster)
+        cesi_clust2ent[rep] = set(cluster_points)
     cesi_ent2clust = invertDic(cesi_clust2ent, 'm2os')
 
     cesi_ent2clust_u = {}

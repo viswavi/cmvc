@@ -1,6 +1,6 @@
 import gensim, itertools, pickle, random, time
 from helper import *
-from utils import cos_sim
+from cmvc_utils import cos_sim
 from test_performance import cluster_test, HAC_getClusters
 from train_embedding_model import Train_Embedding_Model, pair2triples
 from Context_view import BERT_Model
@@ -208,6 +208,7 @@ def initialize_cluster_seeds(num_cluster_seeds, ent2id, id_to_embedding_rows, tr
         entity_name = random_entity.split("|")[0]
         seed_points.append(id_to_embedding_rows[ent2id[entity_name]])
     return seed_points
+
 
 
 class Embeddings(object):
@@ -540,6 +541,12 @@ class Embeddings(object):
         print()
 
         print('Model is multi-view spherical-k-means')
+        breakpoint()
+        np.save(open("../data/OPIEC59k/relation_view_embed.npz", 'wb'), np.vstack(self.relation_view_embed))
+        np.save(open("../data/OPIEC59k/context_view_embed.npz", 'wb'), np.vstack(self.context_view_embed))
+        json.dump(self.side_info.id2sub, open("../data/OPIEC59k/entId2name.json", 'w'), indent=4)
+
+
 
         for random_seed in range(3):
             print('test time:', random_seed)

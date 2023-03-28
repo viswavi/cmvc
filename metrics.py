@@ -55,6 +55,31 @@ def microPrecision(C_clust2ele, E_ele2clust):
 	if total == 0: return 0
 	return float(num_prec) / float(total)
 
+
+'''
+
+for _, cluster in C_clust2ele.items():
+	freq_map = {}
+	pair_map = defaultdict(list)
+	total += len(cluster)
+
+	for ent in cluster:
+		if ent not in E_ele2clust: 
+			# sys.stdout.write('.')
+			print(f"{ent} not found")
+			continue
+		for ele in E_ele2clust[ent]:
+			freq_map[ele] = freq_map.get(ele, 0)
+			freq_map[ele] += 1
+			pair_map[ent].append(ele)
+	max_rep = 0
+	for k, v in freq_map.items(): max_rep = max(max_rep, v)
+	print(freq_map)
+	break
+
+'''
+
+
 def pairPrecision(C_clust2ele, E_ele2clust):
 	num_hit = 0
 	num_pairs = 0
@@ -98,7 +123,6 @@ def pairwiseMetric(C_clust2ele, E_ele2clust, E_clust2ent, max_pairs_from_cluster
 	num_hit = 0
 	num_C_pairs = 0
 	num_E_pairs = 0
-
 	for _, cluster in C_clust2ele.items():		
 		all_pairs = capped_combinations(cluster, max_pairs_from_cluster)
 		for e1, e2 in all_pairs:
@@ -115,8 +139,8 @@ def pairwiseMetric(C_clust2ele, E_ele2clust, E_clust2ent, max_pairs_from_cluster
 
 	if num_C_pairs == 0 or num_E_pairs == 0: 
 		return 1e-6, 1e-6
-
 	# print( num_hit, num_C_pairs, num_E_pairs)
+
 	return float(num_hit) / float(num_C_pairs), float(num_hit) / float(num_E_pairs)
 
 

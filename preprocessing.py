@@ -5,7 +5,7 @@ Side Information Acquisition module
 from helper import *
 import pdb, itertools
 from nltk.corpus import stopwords
-from utils import *
+from cmvc_utils import *
 import pickle
 
 '''*************************************** INPUT CLASS ********************************************'''

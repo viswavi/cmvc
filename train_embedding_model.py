@@ -1,7 +1,7 @@
 
 from torch.utils.data import DataLoader
 from helper import *
-from utils import cos_sim
+from cmvc_utils import cos_sim
 from dataloader_max_margin import *
 from model_max_margin import KGEModel
 import pickle

@@ -24,7 +24,7 @@ from sklearn.utils.validation import _num_samples, check_X_y
 from sklearn.preprocessing._label import LabelEncoder
 from sklearn.metrics.cluster._unsupervised import check_number_of_labels
 
-from utils import cosine_distance, cos_sim
+from cmvc_utils import cosine_distance, cos_sim
 from test_performance import HAC_getClusters, cluster_test
 from warnings import simplefilter
 simplefilter(action='ignore', category=FutureWarning)
@@ -303,7 +303,7 @@ def init_seeded_kmeans_plusplus(X, seed_set, n_clusters, x_squared_norms, random
         n_local_trials = 2 + int(np.log(n_clusters))
 
     if seed_set is None or len(seed_set) == 0:
-        random_index = np.random.choice(list(range(len(X))))
+        random_index = random_state.choice(list(range(len(X))))
         seed_set = [random_index]
     else:
         seed_set = seed_set
@@ -315,9 +315,8 @@ def init_seeded_kmeans_plusplus(X, seed_set, n_clusters, x_squared_norms, random
 
     # Initialize list of closest distances and calculate current potential
     closest_dist_sq = euclidean_distances(
-        centers[0, np.newaxis], X, Y_norm_squared=x_squared_norms,
+        X[seed_set[0], np.newaxis], X, Y_norm_squared=x_squared_norms,
         squared=True)
-    current_pot = closest_dist_sq.sum()
 
     # Pick the remaining n_clusters-1 points
     for c in range(1, n_clusters):
@@ -328,9 +327,14 @@ def init_seeded_kmeans_plusplus(X, seed_set, n_clusters, x_squared_norms, random
         else:
             # Choose center candidates by sampling with probability proportional
             # to the squared distance to the closest existing center
-            rand_vals = random_state.random_sample(n_local_trials) * current_pot
-            candidate_ids = np.searchsorted(stable_cumsum(closest_dist_sq),
-                                            rand_vals)
+            # rand_vals = random_state.random_sample(n_local_trials) * current_pot
+            # candidate_ids = np.searchsorted(stable_cumsum(closest_dist_sq), rand_vals)
+            if len(closest_dist_sq.shape) == 2:
+                distances_normalized = closest_dist_sq[0]
+            else:
+                distances_normalized = closest_dist_sq
+            distances_normalized = distances_normalized / sum(distances_normalized)
+            candidate_ids = random_state.choice(range(len(distances_normalized)), p=distances_normalized, size=n_local_trials)
 
             # XXX: numerical imprecision can result in a candidate_id out of range
             np.clip(candidate_ids, None, closest_dist_sq.size - 1,
@@ -342,14 +346,17 @@ def init_seeded_kmeans_plusplus(X, seed_set, n_clusters, x_squared_norms, random
 
         # update closest distances squared and potential for each candidate
         np.minimum(closest_dist_sq, distance_to_candidates,
-                   out=distance_to_candidates)
+                   out= distance_to_candidates)
         candidates_pot = distance_to_candidates.sum(axis=1)
+
 
         # Decide which candidate is the best
         best_candidate = np.argmin(candidates_pot)
         current_pot = candidates_pot[best_candidate]
         closest_dist_sq = distance_to_candidates[best_candidate]
         best_candidate = candidate_ids[best_candidate]
+
+        breakpoint()
 
         # Permanently add best center candidate found in local tries
         if sp.issparse(X):
@@ -690,7 +697,7 @@ def multi_view_spherical_k_means(
     max_iter=300,
     verbose=False,
     tol=1e-4,
-    random_state=None,
+    random_state=0,
     copy_x=True,
     n_jobs=1,
     algorithm="auto",
@@ -916,7 +923,7 @@ class Multi_view_SphericalKMeans(object):
         tol=1e-4,
         n_jobs=1,
         verbose=0,
-        random_state=None,
+        random_state=0,
         copy_x=True,
         normalize=True,
         p=None,
