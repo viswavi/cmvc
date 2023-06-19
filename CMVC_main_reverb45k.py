@@ -5,7 +5,6 @@ from embeddings_multi_view import Embeddings
 from cmvc_utils import *
 import os, argparse, pickle, codecs
 from collections import defaultdict as ddict
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 ''' *************************************** DATASET PREPROCESSING **************************************** '''
 
 
@@ -23,10 +22,10 @@ class CMVC_Main(object):
         self.amb_mentions = {}  # Contains all ambiguous mentions
         self.isAcronym = {}  # Contains all mentions which can be acronyms
 
-        print('dataset:', args.dataset)
-        if args.dataset == 'OPIEC':
+        print('dataset:', self.p.dataset)
+        if self.p.dataset == 'OPIEC':
             print('load OPIEC_dataset ... ')
-            self.triples_list = pickle.load(open(args.data_path, 'rb'))
+            self.triples_list = pickle.load(open(self.p.data_path, 'rb'))
 
             ''' Ground truth clustering '''
             self.true_ent2clust = ddict(set)
@@ -37,7 +36,7 @@ class CMVC_Main(object):
 
         else:
             if not checkFile(fname):
-                with codecs.open(args.data_path, encoding='utf-8', errors='ignore') as f:
+                with codecs.open(self.p.data_path, encoding='utf-8', errors='ignore') as f:
                     for line in f:
                         trp = json.loads(line.strip())
 
@@ -87,17 +86,17 @@ class CMVC_Main(object):
         print('self.true_clust2ent:', len(self.true_clust2ent))
         print('self.true_ent2clust:', len(self.true_ent2clust))
 
-        folder = '../file/' + args.dataset + '/'
+        folder = '../file/' + self.p.dataset + '/'
         if not os.path.exists(folder):
             os.makedirs(folder)
 
-        fname1, fname2 = '../file/' + args.dataset + '/self.ent2true_link_list', '../file/' + args.dataset + '/self.ent2true_link'
+        fname1, fname2 = '../file/' + self.p.dataset + '/self.ent2true_link_list', '../file/' + self.p.dataset + '/self.ent2true_link'
         if not checkFile(fname1) or not checkFile(fname2):
             print('generate ent2true_link_dict')
             self.ent2true_link_list = dict()
             for trp in self.triples_list:
                 sub, obj = trp['triple'][0], trp['triple'][2]
-                if args.dataset == 'OPIEC':
+                if self.p.dataset == 'OPIEC':
                     true_sub_link, true_obj_link = trp['subject_wiki_link'], trp['object_wiki_link']
                 else:
                     true_sub_link, true_obj_link = trp['true_sub_link'], trp['true_obj_link']
@@ -161,7 +160,7 @@ class CMVC_Main(object):
 
         if not checkFile(fname1) or not checkFile(fname2):
             embed = Embeddings(self.p, self.side_info, true_ent2clust=self.true_ent2clust,
-                               true_clust2ent=self.true_clust2ent, triple_list=self.triples_list)
+                               true_clust2ent=self.true_clust2ent, triple_list=self.triples_list, num_reinit=self.p.num_reinit)
             embed.fit()
 
             self.ent2embed = embed.ent2embed  # Get the learned NP embeddings
@@ -259,11 +258,11 @@ if __name__ == '__main__':
                         help='Otherwise use subsampling weighting like in word2vec', default=True)
 
     parser.add_argument('-lr', '--learning_rate', default=0.0001, type=float)
-    parser.add_argument('-cpu', '--cpu_num', default=12, type=int)
+    parser.add_argument('-cpu', '--cpu_num', default=4, type=int)
     parser.add_argument('-init', '--init_checkpoint', default=None, type=str)
     parser.add_argument('--warm_up_steps', default=None, type=int)
 
-    parser.add_argument('--save_checkpoint_steps', default=10000, type=int)
+    parser.add_argument('--save_checkpoint_steps', default=1000, type=int)
     parser.add_argument('--valid_steps', default=10000, type=int)
     parser.add_argument('--log_steps', default=100, type=int, help='train log every xx steps')
     parser.add_argument('--test_log_steps', default=1000, type=int, help='valid/test log every xx steps')
@@ -271,6 +270,11 @@ if __name__ == '__main__':
     parser.add_argument('--nentity', type=int, default=0, help='DO NOT MANUALLY SET')
     parser.add_argument('--nrelation', type=int, default=0, help='DO NOT MANUALLY SET')
     parser.add_argument('-embed_dims', dest='embed_dims', default=300, type=int, help='Embedding dimension')
+    parser.add_argument('--kmeans_initialization', default="k-means++", type=str, choices=["k-means++", "seeded-k-means++", "pc"], help='Embedding dimension')	
+    parser.add_argument('--num_cluster_seeds', default=None, type=int, help='Number of cluster seeds to use, if simulating user seed feedback')	
+    parser.add_argument('--num_reinit', type=int, default=10, help="Number of reinitializations to try for k-Means clustering")	
+    parser.add_argument('--save_model', action="store_true", help="Whether or not to serialize and save model outputs and parameters to disk")	
+    parser.add_argument('--unnormalize', action="store_true", help="Whether to normalize each point before clustering")
 
     # word2vec and iteration hyper-parameters
     parser.add_argument('-retrain_literal_embeds', dest='retrain_literal_embeds', default=True,

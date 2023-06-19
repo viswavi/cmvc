@@ -32,6 +32,8 @@ class SideInfo(object):
         fname16, fname17, fname18 = self.folder_to_make + '/self.id2obj', self.folder_to_make + '/self.ent_id2sentence_list', self.folder_to_make + '/self.sentence_list'
         fname19, fname20 = self.folder_to_make + '/self.ent2triple_id_list', self.folder_to_make + '/self.rel2triple_id_list'
 
+        sentence_unprocessed_mapping = {}
+
         if not checkFile(fname1) or not checkFile(fname2):
             print('generate side_info')
             ent1List, relList, ent2List = [], [], []  # temp variables
@@ -68,8 +70,10 @@ class SideInfo(object):
                     self.ent2triple_id_list[obj].append(triple_num)
 
                 for sentence in triple['src_sentences']:
+                    original_sentence = sentence
                     if self.p.replace_h:
                         sentence = sentence.replace(str(triple[self.triple_str][0]), '')
+                    sentence_unprocessed_mapping[sentence] = original_sentence
                     sentence_ = word_tokenize(sentence)
                     sentence = str()
                     for i in range(len(sentence_)):
@@ -81,10 +85,12 @@ class SideInfo(object):
                             sentence += str(w)
                         if not i == len(sentence_) - 1:
                             sentence += ' '
+                    sentence_unprocessed_mapping[sentence] = original_sentence
                     # print('sentence：', type(sentence), len(sentence), sentence)
                     if len(sentence) == 0:
                         sentence += str(triple[self.triple_str][0])
                     # print('sentence：', type(sentence), len(sentence), sentence)
+                    sentence_unprocessed_mapping[sentence] = original_sentence
                     self.sentence_List.append(sentence)
                     triple2sentence[triple_num].append(sentence_num)
                     if len(self.sentence_List) == 0:
@@ -92,6 +98,8 @@ class SideInfo(object):
                         # self.sentence_List.append(triple[self.triple_str][2])
                     sentence_num += 1
                 triple_num += 1
+
+            breakpoint()
 
             print('relList:', len(relList))  # 35812
             print('ent1List:', len(ent1List))  # 35812

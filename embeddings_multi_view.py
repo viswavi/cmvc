@@ -459,7 +459,7 @@ class Embeddings(object):
                 pickle.dump(self.label, open(fname1, 'wb'))
             else:
                 print('load BERT_fine-tune_', fname1)
-                self.label = pickle.load(open(fname1, 'rb'))
+                self.label = pickle.load(open(fname1, 'srb'))
                 context_view_label = self.label
         old_label, new_label = context_view_label, self.label
         print('old_label : ')
@@ -541,10 +541,9 @@ class Embeddings(object):
         print()
 
         print('Model is multi-view spherical-k-means')
-        breakpoint()
-        np.save(open("../data/OPIEC59k/relation_view_embed.npz", 'wb'), np.vstack(self.relation_view_embed))
-        np.save(open("../data/OPIEC59k/context_view_embed.npz", 'wb'), np.vstack(self.context_view_embed))
-        json.dump(self.side_info.id2sub, open("../data/OPIEC59k/entId2name.json", 'w'), indent=4)
+        np.save(open("../data/OPIEC59k/valid_relation_view_embed.npz", 'wb'), np.vstack(self.relation_view_embed))
+        np.save(open("../data/OPIEC59k/valid_context_view_embed.npz", 'wb'), np.vstack(self.context_view_embed))
+        json.dump(self.side_info.id2sub, open("../data/OPIEC59k/valid_entId2name.json", 'w'), indent=4)
 
 
 
@@ -569,7 +568,6 @@ class Embeddings(object):
                 seed_set = initialize_cluster_seeds(self.p.num_cluster_seeds, self.side_info.ent2id, id_to_embedding_rows, self.true_clust2ent)
                 print("TODO(Vijay): Not implemented")
             elif self.p.kmeans_initialization == "pc":
-                breakpoint()
                 init = "seeded-k-means++"
                 seed_set = np.array([])
                 print("TODO(Vijay): Not implemented")

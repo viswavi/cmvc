@@ -1,4 +1,5 @@
 
+import logging
 from torch.utils.data import DataLoader
 from helper import *
 from cmvc_utils import cos_sim
@@ -325,5 +326,7 @@ class Train_Embedding_Model(object):
                     KGEModel.log_metrics(self.p, 'Training average', step, metrics)
                     training_logs = []
 
+        breakpoint()
         self.entity_embedding = kge_model.entity_embedding.detach().cpu().numpy()
         self.relation_embedding = kge_model.relation_embedding.detach().cpu().numpy()
+        return self.entity_embedding, self.relation_embedding

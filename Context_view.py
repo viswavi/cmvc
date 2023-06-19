@@ -22,9 +22,12 @@ class BertClassificationModel(nn.Module):
         print("BertClassificationModel del ... ")
 
     def forward(self, batch_sentences):
-        batch_tokenized = self.tokenizer.batch_encode_plus(batch_sentences, add_special_tokens=True,
-                                                           max_length=self.max_length,
-                                                           pad_to_max_length=True)
+        try:
+            batch_tokenized = self.tokenizer.batch_encode_plus(batch_sentences, add_special_tokens=True,
+                                                            max_length=self.max_length,
+                                                            pad_to_max_length=True)
+        except:
+            breakpoint()
         input_ids = torch.tensor(batch_tokenized['input_ids']).cuda()
         attention_mask = torch.tensor(batch_tokenized['attention_mask']).cuda()
         bert_output = self.bert(input_ids, attention_mask=attention_mask)
@@ -44,7 +47,7 @@ class BERT_Model(object):
         self.BERT_self_training_time = BERT_self_training_time
         self.sub_uni2triple_dict = sub_uni2triple_dict
         self.rel_id2sentence_list = rel_id2sentence_list
-        self.batch_size = 40
+        self.batch_size = 30
         if self.p.dataset == 'reverb45k_change':
             self.epochs = 100
         else:
@@ -156,6 +159,7 @@ class BERT_Model(object):
                     if i == (batch_count - 1):
                         real_time = time.strftime("%Y_%m_%d") + ' ' + time.strftime("%H:%M:%S")
                         print(real_time, "Epoch: %d, Loss: %.4f" % (epoch, avg_epoch_loss))
+            breakpoint()
 
             self.BERT_CLS = cls_output.detach().cpu().numpy()
             pickle.dump(self.BERT_CLS, open(fname1, 'wb'))

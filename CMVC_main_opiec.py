@@ -4,6 +4,8 @@ from embeddings_multi_view import Embeddings
 from cmvc_utils import *
 import os, argparse, pickle, codecs
 from collections import defaultdict as ddict
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 ''' *************************************** DATASET PREPROCESSING **************************************** '''
 
 class CMVC_Main(object):
@@ -117,7 +119,7 @@ if __name__ == '__main__':
         description='CESI: Canonicalizing Open Knowledge Bases using Embeddings and Side Information')
     parser.add_argument('-data', dest='dataset', default='OPIEC59k', help='Dataset to run CESI on')
     parser.add_argument('-split', dest='split', default='test', help='Dataset split for evaluation')
-    parser.add_argument('-data_dir', dest='data_dir', default='../data', help='Data directory')
+    parser.add_argument('-l', dest='data_dir', default='../data', help='Data directory')
     parser.add_argument('-out_dir', dest='out_dir', default='../output', help='Directory to store CESI output')
     parser.add_argument('-reset', dest="reset", action='store_true', default=True,
                         help='Clear the cached files (Start a fresh run)')
