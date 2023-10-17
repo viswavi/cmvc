@@ -1,7 +1,7 @@
 from helper import *
 from preprocessing import SideInfo  # For processing data and side information
 from embeddings_multi_view import Embeddings
-from utils import *
+from cmvc_utils import *
 import os, argparse, pickle, codecs
 from collections import defaultdict as ddict
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"

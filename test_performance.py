@@ -1,5 +1,5 @@
 from helper import *
-from utils import *
+from cmvc_utils import *
 from metrics import evaluate  # Evaluation metrics
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial.distance import pdist
