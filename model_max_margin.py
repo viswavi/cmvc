@@ -6,7 +6,7 @@ from __future__ import print_function
 
 import torch
 import torch.nn as nn
-from helper import *
+from few_shot_clustering.cmvc.helper import *
 import json
 import logging
 import os

@@ -3,7 +3,7 @@ from sklearn.cluster import KMeans
 from tqdm import tqdm
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial.distance import cdist, pdist, euclidean
-from cmvc_utils import cos_sim, normalize
+from few_shot_clustering.cmvc.cmvc_utils import cos_sim, normalize
 
 def softmax(x):
     """Compute softmax values for each sets of scores in x."""

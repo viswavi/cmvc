@@ -1,13 +1,13 @@
 import pandas as pd
 import math, time, pickle
-from helper import *
-from test_performance import cluster_test
+from few_shot_clustering.cmvc.helper import *
+from few_shot_clustering.cmvc.test_performance import cluster_test
 import torch
 from torch import nn
 from torch import optim
 from transformers import BertModel, BertTokenizer
 from tqdm import tqdm
-from find_k_methods import Inverse_JumpsMethod
+from few_shot_clustering.cmvc.find_k_methods import Inverse_JumpsMethod
 
 class BertClassificationModel(nn.Module):
     def __init__(self, target_num, max_length):

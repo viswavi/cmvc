@@ -1,9 +1,9 @@
 
 from torch.utils.data import DataLoader
-from helper import *
-from cmvc_utils import cos_sim
-from dataloader_max_margin import *
-from model_max_margin import KGEModel
+from few_shot_clustering.cmvc.helper import *
+from few_shot_clustering.cmvc.cmvc_utils import cos_sim
+from few_shot_clustering.cmvc.dataloader_max_margin import *
+from few_shot_clustering.cmvc.model_max_margin import KGEModel
 import pickle
 
 def pair2triples(seed_pair_list, ent_list, ent2id, id2ent, ent2triple_id_list, trpIds, entity_embedding, cos_sim,

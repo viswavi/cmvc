@@ -2,10 +2,10 @@
 Side Information Acquisition module
 '''
 
-from helper import *
+from few_shot_clustering.cmvc.helper import *
 import pdb, itertools
 from nltk.corpus import stopwords
-from cmvc_utils import *
+from few_shot_clustering.cmvc.cmvc_utils import *
 import pickle
 
 '''*************************************** INPUT CLASS ********************************************'''

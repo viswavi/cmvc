@@ -1,9 +1,9 @@
 import gensim, itertools, pickle, random, time
-from helper import *
-from cmvc_utils import cos_sim
-from test_performance import cluster_test, HAC_getClusters
-from train_embedding_model import Train_Embedding_Model, pair2triples
-from Context_view import BERT_Model
+from few_shot_clustering.cmvc.helper import *
+from few_shot_clustering.cmvc.cmvc_utils import cos_sim
+from few_shot_clustering.cmvc.test_performance import cluster_test, HAC_getClusters
+from few_shot_clustering.cmvc.train_embedding_model import Train_Embedding_Model, pair2triples
+from few_shot_clustering.cmvc.Context_view import BERT_Model
 
 class DisjointSet(object):
     def __init__(self):

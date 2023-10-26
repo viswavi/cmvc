@@ -1,6 +1,6 @@
-from helper import *
-from cmvc_utils import *
-from metrics import evaluate  # Evaluation metrics
+from few_shot_clustering.cmvc.helper import *
+from few_shot_clustering.cmvc.cmvc_utils import *
+from few_shot_clustering.cmvc.metrics import evaluate  # Evaluation metrics
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial.distance import pdist
 from tqdm import tqdm

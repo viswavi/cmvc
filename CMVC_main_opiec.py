@@ -1,7 +1,7 @@
-from helper import *
-from preprocessing import SideInfo  # For processing data and side information
-from embeddings_multi_view import Embeddings
-from cmvc_utils import *
+from few_shot_clustering.cmvc.helper import *
+from few_shot_clustering.cmvc.preprocessing import SideInfo  # For processing data and side information
+from few_shot_clustering.cmvc.embeddings_multi_view import Embeddings
+from few_shot_clustering.cmvc.cmvc_utils import *
 import os, argparse, pickle, codecs
 from collections import defaultdict as ddict
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
