@@ -22,6 +22,7 @@ class CMVC_Main(object):
         self.amb_ent = ddict(int)  # Contains ambiguous entities in the dataset
         self.amb_mentions = {}  # Contains all ambiguous mentions
         self.isAcronym = {}  # Contains all mentions which can be acronyms
+        args = self.p
 
         print('dataset:', args.dataset)
         if args.dataset == 'OPIEC':
